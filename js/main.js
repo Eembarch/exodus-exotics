@@ -44,11 +44,11 @@ function carCardHTML(car) {
   `;
 }
 
-// ===== RENDER FEATURED (first 6) =====
+// ===== RENDER FEATURED (first 3) =====
 function renderFeatured() {
   const grid = document.getElementById('featuredGrid');
   if (!grid) return;
-  grid.innerHTML = CARS.slice(0, 6).map(car => carCardHTML(car)).join('');
+  grid.innerHTML = CARS.slice(0, 3).map(car => carCardHTML(car)).join('');
 }
 
 window.onFleetUpdate = renderFeatured;
