@@ -33,10 +33,13 @@
       }
     });
 
-    // One-time seed from the original hardcoded fleet if the database is empty
+    // One-time seed from the original hardcoded fleet if the database is empty.
+    // Written as a single atomic batch so listeners never observe a partially-seeded fleet.
     fleetCol.limit(1).get().then(snap => {
       if (snap.empty && seedFleet.length) {
-        seedFleet.forEach((car, i) => fleetCol.doc(String(car.id)).set({ ...car, order: i }));
+        const batch = db.batch();
+        seedFleet.forEach((car, i) => batch.set(fleetCol.doc(String(car.id)), { ...car, order: i }));
+        batch.commit();
       }
     });
   });
