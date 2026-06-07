@@ -173,8 +173,9 @@
       <h2>Fleet Management</h2>
       <p>Exodus Exotics</p>
       <form id="loginForm">
-        <input type="password" id="adminPass" placeholder="Enter password" autocomplete="current-password" required />
-        <div id="loginError">Incorrect password. Please try again.</div>
+        <input type="email" id="adminEmail" placeholder="Admin email" autocomplete="username" required />
+        <input type="password" id="adminPass" placeholder="Password" autocomplete="current-password" required />
+        <div id="loginError">Incorrect email or password. Please try again.</div>
         <button type="submit" class="btn btn-primary" style="width:100%">Sign In</button>
       </form>
     </div>
@@ -346,6 +347,9 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
   <script src="/js/data.js"></script>
   <script src="/js/store.js"></script>
   <script src="/js/admin.js"></script>

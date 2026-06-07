@@ -51,4 +51,5 @@ function renderFeatured() {
   grid.innerHTML = CARS.slice(0, 6).map(car => carCardHTML(car)).join('');
 }
 
-renderFeatured();
+window.onFleetUpdate = renderFeatured;
+fleetReady.then(renderFeatured);

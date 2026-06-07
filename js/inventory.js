@@ -56,4 +56,5 @@ function renderInventory() {
 }
 
 document.getElementById('sortBy').addEventListener('change', renderInventory);
-renderInventory();
+window.onFleetUpdate = renderInventory;
+fleetReady.then(renderInventory);

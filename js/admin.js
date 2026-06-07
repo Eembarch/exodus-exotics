@@ -1,35 +1,23 @@
-const ADMIN_PASS = 'sohi1111';
-
 // ===== AUTH =====
-function checkAuth() {
-  return sessionStorage.getItem('admin_auth') === '1';
-}
+let currentTab = 'fleet';
 
-function login(pass) {
-  if (pass === ADMIN_PASS) { sessionStorage.setItem('admin_auth', '1'); return true; }
-  return false;
-}
+onAdminAuthChange(user => {
+  if (user) showPanel(); else showLogin();
+});
 
-function logout() {
-  sessionStorage.removeItem('admin_auth');
-  location.reload();
-}
-
-// ===== INIT =====
 window.addEventListener('DOMContentLoaded', () => {
-  checkAuth() ? showPanel() : showLogin();
-
   document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault();
-    if (login(document.getElementById('adminPass').value)) {
-      showPanel();
-    } else {
+    const email = document.getElementById('adminEmail').value.trim();
+    const pass  = document.getElementById('adminPass').value;
+    document.getElementById('loginError').style.display = 'none';
+    adminLogin(email, pass).catch(() => {
       document.getElementById('loginError').style.display = 'block';
       document.getElementById('adminPass').value = '';
-    }
+    });
   });
 
-  document.getElementById('logoutBtn').addEventListener('click', logout);
+  document.getElementById('logoutBtn').addEventListener('click', adminLogout);
   document.getElementById('addCarBtn').addEventListener('click', () => openModal(null));
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('cancelBtn').addEventListener('click', closeModal);
@@ -55,8 +43,13 @@ function showPanel() {
   switchTab('fleet');
 }
 
+// Keep whichever tab is open in sync with live fleet data
+window.onFleetUpdate = () => { if (currentTab === 'fleet') renderCarList(); };
+fleetReady.then(() => { if (currentTab === 'fleet') renderCarList(); });
+
 // ===== TABS =====
 function switchTab(tab) {
+  currentTab = tab;
   const isFleet = tab === 'fleet';
   document.getElementById('tabFleet').classList.toggle('tab-active', isFleet);
   document.getElementById('tabInquiries').classList.toggle('tab-active', !isFleet);
@@ -67,7 +60,7 @@ function switchTab(tab) {
 
 // ===== FLEET TABLE =====
 function renderCarList() {
-  const fleet    = getFleet() || [];
+  const fleet    = CARS;
   const tbody    = document.getElementById('carTableBody');
   const countEl  = document.getElementById('fleetCount');
   countEl.textContent = `${fleet.length} vehicle${fleet.length !== 1 ? 's' : ''}`;
@@ -100,8 +93,8 @@ function renderCarList() {
 }
 
 // ===== INQUIRIES TABLE =====
-function renderInquiries() {
-  const list  = getInquiries();
+async function renderInquiries() {
+  const list  = await getInquiries();
   const tbody = document.getElementById('inquiryTableBody');
   const countEl = document.getElementById('inquiryCount');
   countEl.textContent = `${list.length} ${list.length !== 1 ? 'inquiries' : 'inquiry'}`;
@@ -131,10 +124,16 @@ function renderInquiries() {
         <td style="font-size:0.8rem;color:#777;max-width:180px">${inq.notes || '—'}</td>
         <td style="font-size:0.75rem;color:#444;white-space:nowrap">
           ${date}
-          <br><button class="admin-btn delete-btn" style="margin-top:0.35rem" onclick="deleteInquiry(${inq.id})">Delete</button>
+          <br><button class="admin-btn delete-btn" style="margin-top:0.35rem" onclick="confirmDeleteInquiry(${inq.id})">Delete</button>
         </td>
       </tr>`;
   }).join('');
+}
+
+async function confirmDeleteInquiry(id) {
+  if (!confirm('Delete this inquiry?')) return;
+  await deleteInquiry(id);
+  renderInquiries();
 }
 
 // ===== MODAL =====
@@ -178,43 +177,60 @@ function closeModal() {
   document.getElementById('carModal').style.display = 'none';
 }
 
-function previewImage() {
+// Resizes and compresses an uploaded photo so it stays well under Firestore's 1MB document limit
+function compressImage(file, maxWidth = 1280, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale  = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function previewImage() {
   const file = document.getElementById('fImage').files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById('imgPreview').src = e.target.result;
-    document.getElementById('imgPreviewWrap').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+  const dataUrl = await compressImage(file);
+  document.getElementById('imgPreview').src = dataUrl;
+  document.getElementById('imgPreviewWrap').style.display = 'block';
 }
 
 // ===== CRUD =====
 function editCar(id) {
-  const car = (getFleet() || []).find(c => c.id === id);
+  const car = CARS.find(c => c.id === id);
   if (car) openModal(car);
 }
 
-function deleteCar(id) {
-  const fleet = getFleet() || [];
-  const car   = fleet.find(c => c.id === id);
+async function deleteCar(id) {
+  const car = CARS.find(c => c.id === id);
   if (!car || !confirm(`Remove the ${car.year} ${car.make} ${car.model} from the fleet?`)) return;
-  const updated = fleet.filter(c => c.id !== id);
-  saveFleet(updated);
-  window.CARS = updated;
-  renderCarList();
+  await deleteFleetCar(id);
 }
 
-function saveCar(e) {
+async function saveCar(e) {
   e.preventDefault();
   const existingId = document.getElementById('carId').value;
-  const fleet      = getFleet() || [];
+  const existing   = existingId ? CARS.find(c => c.id === parseInt(existingId)) : null;
 
-  const typeVal    = document.getElementById('fType').value;
-  const emojiMap   = { Coupe: '🏎️', Sedan: '🚗', SUV: '🚙', Convertible: '🏎️', Truck: '🚙' };
+  const typeVal  = document.getElementById('fType').value;
+  const emojiMap = { Coupe: '🏎️', Sedan: '🚗', SUV: '🚙', Convertible: '🏎️', Truck: '🚙' };
 
   const carData = {
     id:           existingId ? parseInt(existingId) : Date.now(),
+    order:        existing ? (existing.order ?? Date.now()) : Date.now(),
     year:         parseInt(document.getElementById('fYear').value),
     make:         document.getElementById('fMake').value.trim(),
     model:        document.getElementById('fModel').value.trim(),
@@ -231,38 +247,14 @@ function saveCar(e) {
     emoji:        emojiMap[typeVal] || '🚗',
     features:     document.getElementById('fFeatures').value.split('\n').map(f => f.trim()).filter(Boolean),
     description:  document.getElementById('fDescription').value.trim(),
-    image:        existingId ? ((fleet.find(c => c.id === parseInt(existingId)) || {}).image || null) : null,
+    image:        existing ? (existing.image || null) : null,
   };
 
   const file = document.getElementById('fImage').files[0];
   if (file) {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      carData.image = ev.target.result;
-      applyCarSave(carData, fleet, existingId);
-    };
-    reader.readAsDataURL(file);
-  } else {
-    applyCarSave(carData, fleet, existingId);
+    carData.image = await compressImage(file);
   }
-}
 
-function deleteInquiry(id) {
-  const list    = getInquiries();
-  const updated = list.filter(i => i.id !== id);
-  localStorage.setItem('exodus_inquiries', JSON.stringify(updated));
-  renderInquiries();
-}
-
-function applyCarSave(car, fleet, existingId) {
-  if (existingId) {
-    const idx = fleet.findIndex(c => c.id === parseInt(existingId));
-    if (idx !== -1) fleet[idx] = car; else fleet.push(car);
-  } else {
-    fleet.push(car);
-  }
-  saveFleet(fleet);
-  window.CARS = fleet;
+  await saveFleetCar(carData);
   closeModal();
-  renderCarList();
 }

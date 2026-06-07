@@ -1,41 +1,78 @@
 (function () {
-  const FLEET_KEY   = 'exodus_fleet';
-  const INQUIRY_KEY = 'exodus_inquiries';
+  const seedFleet = (typeof CARS !== 'undefined') ? CARS.slice() : [];
 
-  function getFleet() {
-    try {
-      const raw = localStorage.getItem(FLEET_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
-  }
+  const firebaseConfig = {
+    apiKey: "AIzaSyCw_mOt4VMEwgs5rvakn77X3lSORG3_LI0",
+    authDomain: "exodus-exotics.firebaseapp.com",
+    projectId: "exodus-exotics",
+    storageBucket: "exodus-exotics.firebasestorage.app",
+    messagingSenderId: "1086035673524",
+    appId: "1:1086035673524:web:a2f7b675b473fee57db2e1"
+  };
 
-  function saveFleet(cars) {
-    localStorage.setItem(FLEET_KEY, JSON.stringify(cars));
-  }
+  firebase.initializeApp(firebaseConfig);
+  const db   = firebase.firestore();
+  const auth = firebase.auth();
 
-  function getInquiries() {
-    try {
-      const raw = localStorage.getItem(INQUIRY_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) { return []; }
-  }
+  const fleetCol   = db.collection('fleet');
+  const inquiryCol = db.collection('inquiries');
 
-  function saveInquiry(inquiry) {
-    const list = getInquiries();
-    list.unshift({ ...inquiry, id: Date.now(), submittedAt: new Date().toISOString() });
-    localStorage.setItem(INQUIRY_KEY, JSON.stringify(list));
-  }
+  window.CARS = [];
 
-  // Seed fleet from hardcoded data on first ever load
-  let fleet = getFleet();
-  if (!fleet) {
-    fleet = typeof CARS !== 'undefined' ? CARS.slice() : [];
-    saveFleet(fleet);
-  }
+  // Keeps window.CARS in sync with the cloud database in real time.
+  // Resolves the first time data arrives; calls onFleetUpdate on every change after that.
+  window.fleetReady = new Promise(resolve => {
+    let resolved = false;
+    fleetCol.orderBy('order').onSnapshot(snapshot => {
+      window.CARS = snapshot.docs.map(doc => doc.data());
+      if (!resolved) {
+        resolved = true;
+        resolve(window.CARS);
+      } else if (typeof window.onFleetUpdate === 'function') {
+        window.onFleetUpdate(window.CARS);
+      }
+    });
 
-  window.CARS         = fleet;
-  window.getFleet     = getFleet;
-  window.saveFleet    = saveFleet;
-  window.getInquiries = getInquiries;
-  window.saveInquiry  = saveInquiry;
+    // One-time seed from the original hardcoded fleet if the database is empty
+    fleetCol.limit(1).get().then(snap => {
+      if (snap.empty && seedFleet.length) {
+        seedFleet.forEach((car, i) => fleetCol.doc(String(car.id)).set({ ...car, order: i }));
+      }
+    });
+  });
+
+  window.saveFleetCar = async function (car) {
+    await fleetCol.doc(String(car.id)).set(car);
+  };
+
+  window.deleteFleetCar = async function (id) {
+    await fleetCol.doc(String(id)).delete();
+  };
+
+  window.getInquiries = async function () {
+    const snap = await inquiryCol.orderBy('submittedAt', 'desc').get();
+    return snap.docs.map(doc => doc.data());
+  };
+
+  window.saveInquiry = async function (inquiry) {
+    const id = Date.now();
+    await inquiryCol.doc(String(id)).set({ ...inquiry, id, submittedAt: new Date().toISOString() });
+  };
+
+  window.deleteInquiry = async function (id) {
+    await inquiryCol.doc(String(id)).delete();
+  };
+
+  // ===== ADMIN AUTH =====
+  window.adminLogin = function (email, password) {
+    return auth.signInWithEmailAndPassword(email, password);
+  };
+
+  window.adminLogout = function () {
+    return auth.signOut();
+  };
+
+  window.onAdminAuthChange = function (callback) {
+    auth.onAuthStateChanged(callback);
+  };
 })();

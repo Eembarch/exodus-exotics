@@ -6,12 +6,18 @@ document.getElementById('navToggle').addEventListener('click', () => {
 
 const params  = new URLSearchParams(window.location.search);
 const carId   = parseInt(params.get('id'));
-const car     = CARS.find(c => c.id === carId);
 const section = document.getElementById('carDetail');
 
-if (!car) {
-  section.innerHTML = '<p class="loading">Vehicle not found. <a href="/inventory/">Back to fleet</a></p>';
-} else {
+function renderCarDetail() {
+  const car = CARS.find(c => c.id === carId);
+
+  if (!car) {
+    section.innerHTML = '<p class="loading">Vehicle not found. <a href="/inventory/">Back to fleet</a></p>';
+    const simSection = document.getElementById('similarGrid');
+    if (simSection) simSection.parentElement.style.display = 'none';
+    return;
+  }
+
   document.title = `${car.year} ${car.make} ${car.model} | Exodus Exotics`;
 
   const price      = car.price.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -108,6 +114,7 @@ if (!car) {
   const similar  = CARS.filter(c => c.type === car.type && c.id !== car.id).slice(0, 3);
   const simGrid  = document.getElementById('similarGrid');
   if (similar.length > 0) {
+    simGrid.parentElement.style.display = '';
     simGrid.innerHTML = similar.map(c => {
       const p     = c.price.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
       const badge = c.badge ? `<span class="car-badge">${c.badge}</span>` : '';
@@ -137,3 +144,6 @@ if (!car) {
     simGrid.parentElement.style.display = 'none';
   }
 }
+
+window.onFleetUpdate = renderCarDetail;
+fleetReady.then(renderCarDetail);
