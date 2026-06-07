@@ -13,7 +13,7 @@ function carCardHTML(car) {
     : (car.emoji || '🚗');
   const imgStyle = car.image ? 'style="padding:0;font-size:0;"' : '';
   return `
-    <div class="car-card" onclick="window.location='car.html?id=${car.id}'">
+    <div class="car-card" onclick="window.location='/car/?id=${car.id}'">
       <div class="car-img-wrap">
         <div class="car-img" ${imgStyle}>${imgInner}</div>
         ${badge}
@@ -30,7 +30,7 @@ function carCardHTML(car) {
       </div>
       <div class="car-footer">
         <span style="font-size:0.75rem;color:var(--gray);letter-spacing:1px;text-transform:uppercase">${car.make}</span>
-        <a href="car.html?id=${car.id}" class="btn btn-primary">Reserve</a>
+        <a href="/car/?id=${car.id}" class="btn btn-primary">Reserve</a>
       </div>
     </div>
   `;

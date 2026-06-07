@@ -10,7 +10,7 @@ const car     = CARS.find(c => c.id === carId);
 const section = document.getElementById('carDetail');
 
 if (!car) {
-  section.innerHTML = '<p class="loading">Vehicle not found. <a href="inventory.html">Back to fleet</a></p>';
+  section.innerHTML = '<p class="loading">Vehicle not found. <a href="/inventory/">Back to fleet</a></p>';
 } else {
   document.title = `${car.year} ${car.make} ${car.model} | Exodus Exotics`;
 
@@ -57,8 +57,8 @@ if (!car) {
       <div class="detail-sidebar">
         <div class="sidebar-card">
           <h3>Reserve This Vehicle</h3>
-          <a href="financing.html" class="btn btn-primary full-width">Check Availability &amp; Rates</a>
-          <a href="contact.html" class="btn btn-outline full-width" style="margin-bottom:1.5rem">Contact Our Concierge</a>
+          <a href="/financing/" class="btn btn-primary full-width">Check Availability &amp; Rates</a>
+          <a href="/contact/" class="btn btn-outline full-width" style="margin-bottom:1.5rem">Contact Our Concierge</a>
 
           <form id="inquiryForm" class="contact-form">
             <div class="form-group">
@@ -116,7 +116,7 @@ if (!car) {
         : (c.emoji || '🚗');
       const imgStyle = c.image ? 'style="padding:0;font-size:0;"' : '';
       return `
-        <div class="car-card" onclick="window.location='car.html?id=${c.id}'">
+        <div class="car-card" onclick="window.location='/car/?id=${c.id}'">
           <div class="car-img-wrap">
             <div class="car-img" ${imgStyle}>${imgInner}</div>
             ${badge}
@@ -128,7 +128,7 @@ if (!car) {
           </div>
           <div class="car-footer">
             <span style="font-size:0.75rem;color:var(--gray);letter-spacing:1px;text-transform:uppercase">${c.make}</span>
-            <a href="car.html?id=${c.id}" class="btn btn-primary">Reserve</a>
+            <a href="/car/?id=${c.id}" class="btn btn-primary">Reserve</a>
           </div>
         </div>
       `;
