@@ -1,5 +1,5 @@
 // ===== LUXURY RENTAL FLEET =====
-const CARS = [
+window.CARS = [
   {
     id: 1,
     year: 2024, make: "Ferrari", model: "Roma", trim: "Spider",
