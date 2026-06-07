@@ -217,7 +217,11 @@ function editCar(id) {
 async function deleteCar(id) {
   const car = CARS.find(c => c.id === id);
   if (!car || !confirm(`Remove the ${car.year} ${car.make} ${car.model} from the fleet?`)) return;
-  await deleteFleetCar(id);
+  try {
+    await deleteFleetCar(id);
+  } catch (err) {
+    alert('Could not delete this vehicle: ' + err.message);
+  }
 }
 
 async function saveCar(e) {
@@ -255,6 +259,10 @@ async function saveCar(e) {
     carData.image = await compressImage(file);
   }
 
-  await saveFleetCar(carData);
-  closeModal();
+  try {
+    await saveFleetCar(carData);
+    closeModal();
+  } catch (err) {
+    alert('Could not save this vehicle: ' + err.message);
+  }
 }
